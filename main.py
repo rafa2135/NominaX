@@ -1,10 +1,11 @@
+#main.py
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import os
 import widget_creator
 import database_manager
-import sqlite3
+import pyodbc
 import re
 from decimal import Decimal
 
@@ -16,31 +17,33 @@ SSO = Decimal('0.02')   # 2% del salario base
 SHCM = Decimal('0.15')  # 15% del salario base
 root = tk.Tk()
 
-
 #funciones
 
 def insert_db(empleados_data, bonos_data):
+    
     try:
         with database_manager.connect() as conn:
             if conn:
                 completado = database_manager.insert_data(conn, empleados_data, bonos_data)
 
             if completado:
-                messagebox.showinfo("Añadido","El usuario fue Añadido")
-                print("Inserción completada")
-            else:
-                print("Inserción fallida")
-    
-    except sqlite3.IntegrityError as e:
+                messagebox.showinfo("Añadido","El usuario fue Añadido")            
+    except pyodbc.IntegrityError as e:        
         print("Error de integridad:", e)
-        messagebox.showerror("Error de inserción", "Error: No se puede insertar un usuario con una cédula que ya existe en la base de datos.")
-    except sqlite3.Error as e:
-        print("Error en la inserción:", e)
-        messagebox.showerror("Error de inserción", f"Error en la inserción: {str(e)}")
-    except Exception as e:
-        print("Error desconocido:", e)
-        messagebox.showerror("Error de inserción", f"Error desconocido: {str(e)}")
-
+        tipo_error = type(e).__name__
+        mensaje_error = errores.get(tipo_error, "Error desconocido")
+        messagebox.showerror("Error de inserción", mensaje_error) 
+    except pyodbc.Error as e:        
+        print("Error de conexión:", e)           
+        tipo_error = type(e).__name__
+        mensaje_error = errores.get(tipo_error, "Error desconocido")
+        messagebox.showerror("Error de inserción", mensaje_error)    
+    except Exception as e:       
+        print("Error desconocido:", e)             
+        tipo_error = type(e).__name__
+        mensaje_error = errores.get(tipo_error, "Error desconocido")
+        messagebox.showerror("Error de inserción", mensaje_error)       
+  
 
 def borrar_db(cedula): #funcion para conectar y borrar un usuario
     conn=database_manager.connect()
@@ -49,16 +52,14 @@ def borrar_db(cedula): #funcion para conectar y borrar un usuario
         compledado=database_manager.borrar_usuario(conn,cedula)
 
         if compledado:
-            messagebox.showinfo("completado","El usuario fue borrado")
-            print("borrado completado")
+            messagebox.showinfo("completado","El usuario fue borrado")            
         else:
-            messagebox.showerror("Error", "El usuario no existe en la base de datos.")
-            print("Borrado fallido")
+            messagebox.showerror("Error", "El usuario no existe en la base de datos.")            
           #cerrar coneccion
         database_manager.close_connection(conn)
     else:
         messagebox.showerror("Error", "coneccion fallida.")
-        print("coneccion fallida")
+        
 
 
 def validate_input(empleados_data): #validando input integer
@@ -69,6 +70,10 @@ def validate_input(empleados_data): #validando input integer
     seguro_hcm = empleados_data[0][4]
     sueldo_basico = empleados_data[0][5]
 
+    # Validando campos vacíos
+    if '' in (cedula, nombre, apellido, seguro_social, seguro_hcm, sueldo_basico):
+        messagebox.showerror("Error", "Todos los campos son obligatorios.")
+        return False
     # Validando cedula
     if not (cedula.isdigit() and 6 <= len(cedula) <= 10):
         messagebox.showerror("Error", "Cedula tiene que ser un numero entero y con mas de 6 characteres")
@@ -105,18 +110,16 @@ def get_insert_data():    #get datos del usuario y insertar on la db
     ]    
     if not validate_input(empleados_data):
         return
-    print(empleados_data)
-    bonos_data=calculo_bonos(cedula,float(sueldo_basico))
-    print(bonos_data)
-    insert_db(empleados_data,bonos_data)
-
+    bonos_data=calculo_bonos(cedula,float(sueldo_basico))    
+    insert_db(empleados_data, bonos_data)   
+   
+   
 def get_borrar_data():      # get cedula para borrar usuario
     cedula=borrar_cedula_entry.get()
     # Validating cedula
     if not (cedula.isdigit() and 6 <= len(cedula) <= 10):
         messagebox.showerror("Error", "Cedula tiene que ser un numero entero y con mas de 6 characteres")
-        return False
-    print (cedula)
+        return False    
     borrar_db(cedula)
 
 def calculo_bonos(cedula, sueldo):
@@ -150,7 +153,11 @@ def mostrar_datos():
             clean_row = [str(item).strip("(),'") if not isinstance(item, Decimal) else item for item in row_with_sueldo_neto]
             treeview.insert('', 'end', values=clean_row)
     
-
+errores = {
+    "IntegrityError": "No se puede insertar un usuario con una cédula que ya existe en la base de datos.",
+    "Error de conexión": "No se pudo conectar a la base de datos.",
+    "Error desconocido": "Se produjo un error desconocido al insertar el usuario.",
+}
 #set style
             
 root.tk.call("source","forest-dark.tcl")

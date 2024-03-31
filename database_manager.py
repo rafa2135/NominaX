@@ -1,6 +1,8 @@
+#database_manager.py
 import pyodbc
 import os 
 from dotenv import load_dotenv
+import time
 
 
 # Default database connection parameters
@@ -9,19 +11,23 @@ DEFAULT_DATABASE = os.getenv('DEFAULT_DATABASE')
 DEFAULT_USERNAME = os.getenv('DEFAULT_USERNAME')
 DEFAULT_PASSWORD = os.getenv('DEFAULT_PASSWORD')
 
-new=3
+
 def connect(server=DEFAULT_SERVER, database=DEFAULT_DATABASE, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD):
     #Establece una conexión con la base de datos
     driver = '{ODBC Driver 17 for SQL Server}'
     conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
 
-    try:
-        conn = pyodbc.connect(conn_str)
-        print("conected")
-        return conn
-    except Exception as e:
-        print(f'Connection error: {str(e)}')        
-        return None
+    # esperar la carga del controlador ODBC
+    while True:
+        try:
+            conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+            conn = pyodbc.connect(conn_str)
+            
+            return conn
+        except pyodbc.Error as e:
+            print(f'Error de conexión: {str(e)}')
+            print("Esperando 5 segundos antes de intentarlo nuevamente...")
+            time.sleep(5)  # Esperar 5 segundos antes de volver a intentar establecer la conexión
 
 def insert_data(conn, empleados_data, bonos_data):
     try:
@@ -36,13 +42,8 @@ def insert_data(conn, empleados_data, bonos_data):
         cursor.executemany(bonos_query, bonos_data)
 
         conn.commit()  # Commit de la transacción
-        print("¡Datos insertados exitosamente!")
-        return True
-
-    except Exception as e:
-        print(f'Error en la inserción: {str(e)}')
-        conn.rollback()  # Revertir la transacción en caso de error
-        return False
+        
+        return True    
     finally:
         cursor.close()
 
@@ -50,7 +51,7 @@ def insert_data(conn, empleados_data, bonos_data):
 def close_connection(conn): #Cierra la conexión a la base de datos.
     try:
         conn.close()
-        print("Connection closed successfully!")
+        
     except Exception as e:
         print(f'Error closing connection: {str(e)}')
 
@@ -75,22 +76,20 @@ def cedula_existe(conn, table_names, cedula):
             cursor.execute(select_query, (cedula,))
             row_count = cursor.fetchone()[0]
 
-            if row_count > 0:
-                print(f"Cedula {cedula} found in table {table_name}.")
+            if row_count > 0:                
                 return True
         
-        print(f"Cedula {cedula} not found in any table.")
         return False
 
     except Exception as e:
-        print(f'Select error: {str(e)}')
+        
         return False
 
 def borrar_usuario(conn, cedula):
     try:
         # validar si cedula existe un una tabla
         if not cedula_existe(conn, ['bonos', 'empleados'], cedula):
-            print("Cedula does not exist in the database.")
+            
             return False
 
         cursor = conn.cursor()
@@ -103,12 +102,12 @@ def borrar_usuario(conn, cedula):
             cursor.execute(delete_query, (cedula,))  # Pass cedula as a single-element tuple
         
         conn.commit()  # Commit
-        print("Rows deleted successfully!")
+        
         return True
 
     except Exception as e:
         conn.rollback()  # Rollback en caso de error
-        print(f'Deletion error: {str(e)}')
+        
         return False
 
 def fetch_todo(conn):
@@ -126,7 +125,8 @@ def fetch_todo(conn):
         data = cursor.fetchall()
         print (data)
         return data
-
+    #Error fetching data
     except Exception as e:
-        print(f'Error fetching data: {str(e)}')
+        
         return None
+    
