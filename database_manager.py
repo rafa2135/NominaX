@@ -1,7 +1,7 @@
 #database_manager.py
 import pyodbc
 import os 
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 import time
 
 
@@ -17,7 +17,6 @@ def connect(server=DEFAULT_SERVER, database=DEFAULT_DATABASE, username=DEFAULT_U
     driver = '{ODBC Driver 17 for SQL Server}'
     conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
 
-    # esperar la carga del controlador ODBC
     while True:
         try:
             conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
@@ -25,8 +24,6 @@ def connect(server=DEFAULT_SERVER, database=DEFAULT_DATABASE, username=DEFAULT_U
             
             return conn
         except pyodbc.Error as e:
-            print(f'Error de conexión: {str(e)}')
-            print("Esperando 5 segundos antes de intentarlo nuevamente...")
             time.sleep(5)  # Esperar 5 segundos antes de volver a intentar establecer la conexión
 
 def insert_data(conn, empleados_data, bonos_data):
@@ -47,13 +44,42 @@ def insert_data(conn, empleados_data, bonos_data):
     finally:
         cursor.close()
 
+def update_data(conn, empleados_data, bonos_data):
+    try:
+        cursor = conn.cursor()
+
+        # Verificar si la cédula existe en la tabla de empleados
+        empleados_query = "SELECT 1 FROM empleados WHERE cedula=?"
+        cursor.execute(empleados_query, (cedula,))
+        exists = cursor.fetchone()
+
+        if not exists:
+            return False
+
+        # Actualizar datos en la tabla de empleados
+        for empleado in empleados_data:
+            cedula, nombre, apellido, seguro_social, seguro_hcm, sueldo_basico = empleado
+            empleados_query = "UPDATE empleados SET nombre=?, apellido=?, seguro_social=?, seguro_hcm=?, sueldo_basico=? WHERE cedula=?"
+            cursor.execute(empleados_query, (nombre, apellido, seguro_social, seguro_hcm, sueldo_basico, cedula))
+
+        # Actualizar datos en la tabla de bonos
+        for bono in bonos_data:
+            cedula, bono_productividad, bono_alimentacion = bono
+            bonos_query = "UPDATE bonos SET bono_productividad=?, bono_alimentacion=? WHERE cedula=?"
+            cursor.execute(bonos_query, (bono_productividad, bono_alimentacion, cedula))
+
+        conn.commit()  # Commit de la transacción
+        
+        return True    
+    finally:
+        cursor.close()
 
 def close_connection(conn): #Cierra la conexión a la base de datos.
     try:
         conn.close()
         
-    except Exception as e:
-        print(f'Error closing connection: {str(e)}')
+    except Exception as e:        
+        print(f'Error closing connection: {str(e)}')        
 
 def insert_db(empleados_data,bonos_data): #Conecta y inserta datos en la base de datos.
     conn=connect()
@@ -120,13 +146,30 @@ def fetch_todo(conn):
             FROM empleados e
             INNER JOIN bonos b ON e.Cedula = b.Cedula
         """
-
         cursor.execute(query)
-        data = cursor.fetchall()
-        print (data)
+        data = cursor.fetchall()        
+        
         return data
     #Error fetching data
     except Exception as e:
         
         return None
     
+def fetch_persona(conn, cedula):
+    try:
+        cursor = conn.cursor()
+
+        # Consulta SQL para buscar por Cedula y recuperar todos los datos
+        query = """
+            SELECT p.nombre, p.apellido, p.seguro_social, p.seguro_hcm, p.sueldo_basico, b.bono_productividad, b.bono_alimentacion
+            FROM empleados p
+            LEFT JOIN bonos b ON p.cedula = b.cedula
+            WHERE p.cedula = ?
+        """
+        cursor.execute(query, (cedula,))
+        data = cursor.fetchall()           
+        return data
+    # Error al buscar los datos
+    except Exception as e:
+        print(e)
+        return None

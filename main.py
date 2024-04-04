@@ -9,7 +9,6 @@ import pyodbc
 import re
 from decimal import Decimal
 
-
 #constantest
 BA = Decimal('0.4')     # 40% del salario base
 BP = Decimal('0.6')     # 60% del salario base
@@ -25,34 +24,55 @@ def insert_db(empleados_data, bonos_data):
         with database_manager.connect() as conn:
             if conn:
                 completado = database_manager.insert_data(conn, empleados_data, bonos_data)
-
+               
             if completado:
-                messagebox.showinfo("Añadido","El usuario fue Añadido")            
-    except pyodbc.IntegrityError as e:        
-        print("Error de integridad:", e)
+                messagebox.showinfo("Añadido","El usuario fue Añadido")   
+                return True         
+    except pyodbc.IntegrityError as e:  
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de inserción", mensaje_error) 
-    except pyodbc.Error as e:        
-        print("Error de conexión:", e)           
+    except pyodbc.Error as e: 
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de inserción", mensaje_error)    
-    except Exception as e:       
-        print("Error desconocido:", e)             
+    except Exception as e:           
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de inserción", mensaje_error)       
-  
+
+def modificar_db(empleados_data, bonos_data):
+    try:
+        with database_manager.connect() as conn:
+            if conn:
+                completado = database_manager.update_data(conn, empleados_data, bonos_data)
+               
+            if completado:
+                messagebox.showinfo("Modificado","El usuario fue modificado correctamente")   
+                return True  
+            else:
+                messagebox.showerror("Error","la cedula no existe en la base de datos")       
+    except pyodbc.IntegrityError as e:   
+        tipo_error = type(e).__name__
+        mensaje_error = errores.get(tipo_error, "Error desconocido")
+        messagebox.showerror("Error de modificación", mensaje_error) 
+    except pyodbc.Error as e:           
+        tipo_error = type(e).__name__
+        mensaje_error = errores.get(tipo_error, "Error desconocido")
+        messagebox.showerror("Error de modificación", mensaje_error)    
+    except Exception as e:              
+        tipo_error = type(e).__name__
+        mensaje_error = errores.get(tipo_error, "Error desconocido")
+        messagebox.showerror("Error de modificación", mensaje_error)  
 
 def borrar_db(cedula): #funcion para conectar y borrar un usuario
     conn=database_manager.connect()
     if conn:
-        print("conectado")
         compledado=database_manager.borrar_usuario(conn,cedula)
 
         if compledado:
-            messagebox.showinfo("completado","El usuario fue borrado")            
+            messagebox.showinfo("completado","El usuario fue borrado")
+            mostrar_datos()            
         else:
             messagebox.showerror("Error", "El usuario no existe en la base de datos.")            
           #cerrar coneccion
@@ -61,8 +81,7 @@ def borrar_db(cedula): #funcion para conectar y borrar un usuario
         messagebox.showerror("Error", "coneccion fallida.")
         
 
-
-def validate_input(empleados_data): #validando input integer
+def validate_input(empleados_data): #validando data
     cedula = empleados_data[0][0]
     nombre = empleados_data[0][1]
     apellido = empleados_data[0][2]
@@ -111,8 +130,21 @@ def get_insert_data():    #get datos del usuario y insertar on la db
     if not validate_input(empleados_data):
         return
     bonos_data=calculo_bonos(cedula,float(sueldo_basico))    
-    insert_db(empleados_data, bonos_data)   
-   
+    if insert_db(empleados_data, bonos_data):   
+        mostrar_datos()
+
+def get_persona_data():    #get datos del usuario y insertar on la db    
+    cedula = str(cedula_frame.cget("text"))    
+    sueldo_basico = sueldo_basico_frame.get()
+    empleados_data = [
+        (cedula, nombre_frame.get(), apellido_frame.get(),seguro_social_frame.get(), seguro_hcm_frame.get(),sueldo_basico)
+    ]    
+    if not validate_input(empleados_data):
+        return
+    bonos_data=calculo_bonos(cedula,float(sueldo_basico))    
+    modificar_db(empleados_data, bonos_data)   
+    mostrar_datos()
+    
    
 def get_borrar_data():      # get cedula para borrar usuario
     cedula=borrar_cedula_entry.get()
@@ -152,12 +184,77 @@ def mostrar_datos():
             row_with_sueldo_neto = tuple(row) + (sueldo_neto,)
             clean_row = [str(item).strip("(),'") if not isinstance(item, Decimal) else item for item in row_with_sueldo_neto]
             treeview.insert('', 'end', values=clean_row)
+
+
+def bucar_persona(): #buscar una persona en la base de datos  y mostrar los datos
+    cedula=buscar_persona_entry.get()    
+    if not (cedula.isdigit() and 6 <= len(cedula) <= 10):
+        messagebox.showerror("Error", "Cedula tiene que ser un numero entero y con mas de 6 characteres")
+        return False    
+    cedula = int(cedula) 
+    conn=database_manager.connect()
+    data=database_manager.fetch_persona(conn,cedula)
+    if data:
+        #assignar los valores     
+        cedula_frame.config(text=cedula)   
+        nombre_frame.delete(0, "end")
+        nombre_frame.insert(0, data[0][0])
+
+        apellido_frame.delete(0, "end")
+        apellido_frame.insert(0, data[0][1])
+        
+        seguro_social_frame.delete(0, "end")
+        seguro_social_frame.insert(0, data[0][2])
+        
+        seguro_hcm_frame.delete(0, "end")
+        seguro_hcm_frame.insert(0, data[0][3])
+
+        sueldo_basico_frame.delete(0, "end")
+        sueldo_basico_frame.insert(0, data[0][4])
+
+        bono_productividad_frame.config(text=data[0][5])
+
+        bono_alimentacion_frame.config(text=data[0][6])
+
+        sueldo_base=Decimal(data[0][4])
+        sueldo_neto_frame.config(text=calcular_sueldo_neto(sueldo_base))
+
+        #calculando SHCM y SSO y sueldo neto
+        shcm=sueldo_base*SHCM
+        sso=sueldo_base*SSO
+
+        shcm_frame.config(text=shcm)
+
+        sso_frame.config(text=sso)     
     
+        return True
+    else:
+        messagebox.showerror("Error","Esta cedula no esta en la Base de Datos")
+
+def modificar_persona(): #modificar los datos de una persona
+    get_persona_data()
+
+def limpiar_datos(): #borrar todos los datos
+    cedula_frame.config(text="")
+    nombre_frame.delete(0, 'end')
+    apellido_frame.delete(0, 'end')
+    seguro_social_frame.delete(0, 'end')
+    seguro_hcm_frame.delete(0, 'end')    
+    bono_productividad_frame.config(text="")
+    bono_alimentacion_frame.config(text="")
+    shcm_frame.config(text="")
+    sso_frame.config(text="")
+    sueldo_basico_frame.delete(0, 'end')    
+    sueldo_neto_frame.config(text="")
+
+
 errores = {
     "IntegrityError": "No se puede insertar un usuario con una cédula que ya existe en la base de datos.",
     "Error de conexión": "No se pudo conectar a la base de datos.",
     "Error desconocido": "Se produjo un error desconocido al insertar el usuario.",
 }
+
+#Funcionalidad y UI
 #set style
             
 root.tk.call("source","forest-dark.tcl")
@@ -198,35 +295,46 @@ sueldo_basico_entry = widget_creator.create_entry_widget(insert_frame,"Sueldo Ba
 # Button get input
 insert_button= widget_creator.create_button(insert_frame,"Añadir",get_insert_data,6,0)
 
-# set up lable
+# setup widgets para borrar persona
+# lable para borrar persona
 borar_frame=ttk.LabelFrame(left_frame,text="Borrar")
 borar_frame.grid(row=1,column=0,pady=5)
-
-#setup widgets para borrar
+# entry para borrar persona
 borrar_cedula_entry = widget_creator.create_entry_widget(borar_frame,"Cedula",0,0)
-
-# Button get input
+# Button para borrar persona
 borrar_button= widget_creator.create_button(borar_frame,"Borrar",get_borrar_data,1,0)
+
+# Button mostrar todo
+widget_creator.create_button(left_frame,"Buscar todo",mostrar_datos,7,0)
+
+
+# setup widgets para Buscar persona
+# lable para Buscar persona
+buscar_persona_frame=ttk.LabelFrame(left_frame,text="Buscar Persona")
+buscar_persona_frame.grid(row=2,column=0,pady=5)
+#entry para Buscar persona
+buscar_persona_entry=widget_creator.create_entry_widget(buscar_persona_frame,"Cedula",0,0)
+#button para buscar persona
+buscar_persona_button=widget_creator.create_button(buscar_persona_frame,"Buscar persona",bucar_persona,1,0)
 
 # Set right widget
 right_frame = ttk.Frame(frame, padding=(5, 5), relief="solid")
 right_frame.grid(row=0, column=1,)
 
-
+#setup buscar todo frame
+buscar_todo_frame=ttk.Frame(right_frame,padding=(5,5),relief="solid")
+buscar_todo_frame.pack()
 # Scrollbar
-right_scrollbar = ttk.Scrollbar(right_frame)
+right_scrollbar = ttk.Scrollbar(buscar_todo_frame)
 right_scrollbar.pack(side="right",fill="y")
-
 # Table data
 colm_nombres = ["Cedula", "Nombre", "Apellido", "Sueldo Básico", "Bono Productividad","sueldo neto"]
-
 # Treeview
-treeview = ttk.Treeview(right_frame,show="headings", columns=colm_nombres,height=10,yscrollcommand=right_scrollbar.set)
+treeview = ttk.Treeview(buscar_todo_frame,show="headings", columns=colm_nombres,height=10,yscrollcommand=right_scrollbar.set)
 treeview.pack()
 # Insert column headings
 for col in colm_nombres:
     treeview.heading(col, text=col,anchor=tk.W)
-
 # configurando espacio
 treeview.column("Cedula",width=70)
 treeview.column("Nombre",width=90)
@@ -235,8 +343,39 @@ treeview.column("Sueldo Básico",width=90)
 treeview.column("Bono Productividad",width=120)
 treeview.column("sueldo neto",width=80)
 
+#set up mostrar buscar persona frame
+buscar_persona_frame=ttk.Frame(right_frame,padding=(5,5),relief="solid")
+buscar_persona_frame.pack()
+#cedula
+cedula_frame=widget_creator.create_frame_widget(buscar_persona_frame,"Cedula","",0,0)
+#nombre
+nombre_frame=widget_creator.create_frame_entry(buscar_persona_frame,"Nombre","",0,1)
+#apellido
+apellido_frame=widget_creator.create_frame_entry(buscar_persona_frame,"Apellido","",0,2)
+#Seguro Social
+seguro_social_frame=widget_creator.create_frame_entry(buscar_persona_frame,"Seguro Social","",0,3)
+#Seguro HCM
+seguro_hcm_frame=widget_creator.create_frame_entry(buscar_persona_frame,"Seguro HCM","",0,4)
+#bono productividad
+bono_productividad_frame=widget_creator.create_frame_widget(buscar_persona_frame,"Bono Productividad","",1,0)
+#Bono Alimentacion
+bono_alimentacion_frame=widget_creator.create_frame_widget(buscar_persona_frame,"Bono Alimentacion","",1,1)
+#SHCM
+shcm_frame=widget_creator.create_frame_widget(buscar_persona_frame,"SHCM","",1,2)
+#SSO
+sso_frame=widget_creator.create_frame_widget(buscar_persona_frame,"SSO","",1,3)
+#Sueldo basico
+sueldo_basico_frame=widget_creator.create_frame_entry(buscar_persona_frame,"Sueldo Basico","",1,4)
+#Sueldo neto
+sueldo_neto_frame=widget_creator.create_frame_widget(buscar_persona_frame,"Sueldo Neto","",2,2)
+#button modificar
+modificar_button=widget_creator.create_button(buscar_persona_frame,"Modificar",modificar_persona,2,0)
+#button Limpiar
+limpiar_button=widget_creator.create_button(buscar_persona_frame,"Limpiar",limpiar_datos,2,3)
+
+
 
 right_scrollbar.config(command=treeview.yview)
 
-widget_creator.create_button(left_frame,"Buscar todo",mostrar_datos,7,0)
+
 root.mainloop()
