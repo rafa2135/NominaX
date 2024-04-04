@@ -47,15 +47,7 @@ def insert_data(conn, empleados_data, bonos_data):
 def update_data(conn, empleados_data, bonos_data):
     try:
         cursor = conn.cursor()
-
-        # Verificar si la cédula existe en la tabla de empleados
-        empleados_query = "SELECT 1 FROM empleados WHERE cedula=?"
-        cursor.execute(empleados_query, (cedula,))
-        exists = cursor.fetchone()
-
-        if not exists:
-            return False
-
+        
         # Actualizar datos en la tabla de empleados
         for empleado in empleados_data:
             cedula, nombre, apellido, seguro_social, seguro_hcm, sueldo_basico = empleado

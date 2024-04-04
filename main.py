@@ -32,31 +32,31 @@ def insert_db(empleados_data, bonos_data):
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de inserción", mensaje_error) 
-    except pyodbc.Error as e: 
+    except pyodbc.Error as e:                
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de inserción", mensaje_error)    
-    except Exception as e:           
+    except Exception as e:             
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de inserción", mensaje_error)       
 
-def modificar_db(empleados_data, bonos_data):
+def modificar_db(empleados_data, bonos_data):    
     try:
+        
         with database_manager.connect() as conn:
             if conn:
-                completado = database_manager.update_data(conn, empleados_data, bonos_data)
-               
+                completado = database_manager.update_data(conn, empleados_data, bonos_data)               
             if completado:
                 messagebox.showinfo("Modificado","El usuario fue modificado correctamente")   
                 return True  
             else:
                 messagebox.showerror("Error","la cedula no existe en la base de datos")       
-    except pyodbc.IntegrityError as e:   
+    except pyodbc.IntegrityError as e:    
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de modificación", mensaje_error) 
-    except pyodbc.Error as e:           
+    except pyodbc.Error as e:               
         tipo_error = type(e).__name__
         mensaje_error = errores.get(tipo_error, "Error desconocido")
         messagebox.showerror("Error de modificación", mensaje_error)    
@@ -134,14 +134,14 @@ def get_insert_data():    #get datos del usuario y insertar on la db
         mostrar_datos()
 
 def get_persona_data():    #get datos del usuario y insertar on la db    
-    cedula = str(cedula_frame.cget("text"))    
+    cedula = str(cedula_frame.cget("text"))  
     sueldo_basico = sueldo_basico_frame.get()
     empleados_data = [
         (cedula, nombre_frame.get(), apellido_frame.get(),seguro_social_frame.get(), seguro_hcm_frame.get(),sueldo_basico)
     ]    
     if not validate_input(empleados_data):
         return
-    bonos_data=calculo_bonos(cedula,float(sueldo_basico))    
+    bonos_data=calculo_bonos(cedula,float(sueldo_basico))   
     modificar_db(empleados_data, bonos_data)   
     mostrar_datos()
     
@@ -185,8 +185,7 @@ def mostrar_datos():
             clean_row = [str(item).strip("(),'") if not isinstance(item, Decimal) else item for item in row_with_sueldo_neto]
             treeview.insert('', 'end', values=clean_row)
 
-
-def bucar_persona(): #buscar una persona en la base de datos  y mostrar los datos
+def bucar_persona():
     cedula=buscar_persona_entry.get()    
     if not (cedula.isdigit() and 6 <= len(cedula) <= 10):
         messagebox.showerror("Error", "Cedula tiene que ser un numero entero y con mas de 6 characteres")
@@ -229,12 +228,13 @@ def bucar_persona(): #buscar una persona en la base de datos  y mostrar los dato
     
         return True
     else:
-        messagebox.showerror("Error","Esta cedula no esta en la Base de Datos")
+        messagebox.showerror("error","esta cedula no se encuentra en la base de datos")
 
-def modificar_persona(): #modificar los datos de una persona
+def modificar_persona():    
     get_persona_data()
 
-def limpiar_datos(): #borrar todos los datos
+def limpiar_datos():
+
     cedula_frame.config(text="")
     nombre_frame.delete(0, 'end')
     apellido_frame.delete(0, 'end')
@@ -247,14 +247,18 @@ def limpiar_datos(): #borrar todos los datos
     sueldo_basico_frame.delete(0, 'end')    
     sueldo_neto_frame.config(text="")
 
+    nombre_entry.delete(0, 'end')
+    apellido_entry.delete(0, 'end')
+    cedula_entry.delete(0, 'end')
+    seguro_social_entry.delete(0, 'end')
+    seguro_hcm_entry.delete(0, 'end')
+    sueldo_basico_entry.delete(0, 'end')
 
 errores = {
     "IntegrityError": "No se puede insertar un usuario con una cédula que ya existe en la base de datos.",
     "Error de conexión": "No se pudo conectar a la base de datos.",
     "Error desconocido": "Se produjo un error desconocido al insertar el usuario.",
 }
-
-#Funcionalidad y UI
 #set style
             
 root.tk.call("source","forest-dark.tcl")
