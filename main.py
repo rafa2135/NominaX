@@ -254,16 +254,20 @@ def limpiar_datos():
     seguro_hcm_entry.delete(0, 'end')
     sueldo_basico_entry.delete(0, 'end')
 
+    buscar_persona_entry.delete(0, 'end')
+    borrar_cedula_entry.delete(0, 'end')
+
 errores = {
     "IntegrityError": "No se puede insertar un usuario con una cédula que ya existe en la base de datos.",
     "Error de conexión": "No se pudo conectar a la base de datos.",
     "Error desconocido": "Se produjo un error desconocido al insertar el usuario.",
 }
-#set style
-            
+
+#set style            
 root.tk.call("source","forest-dark.tcl")
 ttk.Style().theme_use('forest-dark')
-
+root.title("NominaX Gupo 3")
+root.iconbitmap('FEC.ico')
 #set main frame
 frame = ttk.Frame(root)
 frame.pack()
@@ -274,7 +278,7 @@ left_frame = ttk.Frame(frame,padding=(5,5),relief="solid")
 left_frame.grid(row=0,column=0,pady=5)
 
 # set up lable
-insert_frame=ttk.LabelFrame(left_frame,text="insertar")
+insert_frame=ttk.LabelFrame(left_frame,text="Añadir")
 insert_frame.grid(row=0,column=0,pady=5)
 
 #setup widgets para insert 
@@ -312,14 +316,14 @@ borrar_button= widget_creator.create_button(borar_frame,"Borrar",get_borrar_data
 widget_creator.create_button(left_frame,"Buscar todo",mostrar_datos,7,0)
 
 
-# setup widgets para Buscar persona
-# lable para Buscar persona
-buscar_persona_frame=ttk.LabelFrame(left_frame,text="Buscar Persona")
+# setup widgets para Buscar Empleado
+# lable para Buscar Empleado
+buscar_persona_frame=ttk.LabelFrame(left_frame,text="Buscar Empleado")
 buscar_persona_frame.grid(row=2,column=0,pady=5)
-#entry para Buscar persona
+#entry para Buscar Empleado
 buscar_persona_entry=widget_creator.create_entry_widget(buscar_persona_frame,"Cedula",0,0)
-#button para buscar persona
-buscar_persona_button=widget_creator.create_button(buscar_persona_frame,"Buscar persona",bucar_persona,1,0)
+#button para buscar Empleado
+buscar_persona_button=widget_creator.create_button(buscar_persona_frame,"Buscar Empleado",bucar_persona,1,0)
 
 # Set right widget
 right_frame = ttk.Frame(frame, padding=(5, 5), relief="solid")

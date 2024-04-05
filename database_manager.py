@@ -4,7 +4,6 @@ import os
 #from dotenv import load_dotenv
 import time
 
-
 # Default database connection parameters
 DEFAULT_SERVER = os.getenv('DEFAULT_SERVER')
 DEFAULT_DATABASE = os.getenv('DEFAULT_DATABASE')
@@ -162,6 +161,5 @@ def fetch_persona(conn, cedula):
         data = cursor.fetchall()           
         return data
     # Error al buscar los datos
-    except Exception as e:
-        print(e)
+    except Exception as e:        
         return None
