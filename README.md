@@ -1,4 +1,4 @@
-# Sistema Operativos 2 - Grupo 3
+# Python and sql database
 
 ¡Bienvenido al repositorio del proyecto del Grupo 3 para la materia de Sistema Operativos 2!
 
